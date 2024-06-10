@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="erik@192.168.0.81:22 password" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="erik@parodypost.local:22 password" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="erik@192.168.0.81:22 password">
+      <paths name="erik@parodypost.local:22 password">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp/pycharm_project_145" local="$PROJECT_DIR$" />
+            <mapping deploy="/home/erik/SatericalHeadlines/" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>
