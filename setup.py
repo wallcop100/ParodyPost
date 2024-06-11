@@ -1,8 +1,9 @@
 import os
+import getpass
 import subprocess
 import shutil
 
-def create_service(script_path):
+def create_service(script_path, working_dir, user):
     service_content = f"""
 [Unit]
 Description=Parody Post Service
@@ -10,8 +11,9 @@ After=network.target
 
 [Service]
 ExecStart=/usr/bin/python3 {script_path}
+WorkingDirectory={working_dir}
 Restart=always
-User=pi
+User={user}
 
 [Install]
 WantedBy=multi-user.target
@@ -48,8 +50,11 @@ def setup_script(script_path, repo_url):
     repo_name = os.path.basename(repo_url).split('.')[0]
     script_dir = os.path.join(os.getcwd(), repo_name)
 
+    # Get the current user
+    current_user = getpass.getuser()
+
     # Create systemd service
-    service_path = create_service(os.path.join(script_dir, script_path))
+    service_path = create_service(os.path.join(script_dir, script_path), script_dir, current_user)
 
     # Create update check script
     update_script_path = create_update_script(repo_url, script_dir)
