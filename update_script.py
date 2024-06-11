@@ -4,6 +4,8 @@ import subprocess
 
 def update_script(repo_dir):
     try:
+        subprocess.run(["sudo","pkill","-9","-f","main.py"])
+        subprocess.run(["sudo", "systemctl", "stop", "parodypost.service"])
         # Navigate to the root directory of the cloned repository
         os.chdir(repo_dir)
 
@@ -16,7 +18,7 @@ def update_script(repo_dir):
 
         # Pull changes from the remote repository for the src directory only
         subprocess.run(["git", "pull"])
-
+        subprocess.run(["sudo", "systemctl", "start", "parodypost.service"])
         print("Script updated successfully.")
     except Exception as e:
         print(f"Error updating script: {e}")
@@ -26,3 +28,4 @@ if __name__ == "__main__":
     # Specify the directory where the repository is cloned
     repo_dir = os.path.abspath(os.path.dirname(__file__))
     update_script(repo_dir)
+

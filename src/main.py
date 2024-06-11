@@ -52,7 +52,7 @@ def render_title_page(epd, json_data):
     politics_headline = json_data.get('Politics', {}).get('Headline', 'Default Politics Headline')
 
     title_text = 'Parody Post'
-    date_text = f"{date}  {time_of_day} Edition"
+    date_text = f"{date} \n {time_of_day} Edition"
 
     # Render and display the title page
     pages.render_title_page(epd, title_text, date_text)
@@ -109,7 +109,8 @@ def button_callback(btn):
         elif btn.pin.number == 19:
             render_combined_page(epd, local_json_data)
 
-    epd.sleep()
+
+
 
 
 def setup_buttons():
@@ -117,51 +118,51 @@ def setup_buttons():
         btn = Button(pin)
         btn.when_pressed = button_callback
 
+def check_for_updates():
+    logging.info("Starting Data Update Check")
+    epd = epd2in7_V2.EPD()
+    while True:
+        # Load local JSON data
+        local_json_data = load_local_json(LOCAL_JSON_PATH)
 
+        # Fetch JSON data from remote
+        remote_json_data = get_json_data(REMOTE_JSON_URL)
+
+        if remote_json_data:
+            # Check if the remote data is different from the local data
+            if local_json_data != remote_json_data:
+                logging.info("New data found. Updating display.")
+                save_local_json(LOCAL_JSON_PATH, remote_json_data)
+                render_title_page(epd, remote_json_data)
+                time.sleep(10)
+                render_politics_headline(epd, remote_json_data)
+            else:
+                logging.info("No new data. Skipping update.")
+        else:
+            logging.ERROR("Failed to fetch remote data. Using local data if available.")
+            if local_json_data:
+                pages.render_headline_page(epd, "Failed to fetch remote data. Using local data if available.")
+                time.sleep(20)
+                render_politics_headline(epd, local_json_data)
+
+            else:
+                logging.CRITICAL("No local data available. Cannot update display.")
+                pages.render_headline_page(epd, "No local data available. Cannot update display.")
+
+        # Sleep for the specified interval before checking again
+        epd.sleep()
+        logging.info("Sleeping for 15 Minutes")
+        time.sleep(CHECK_INTERVAL)
 def main():
     try:
-        logging.info("epd2in7 Demo")
+        logging.info("Starting Up...")
         epd = epd2in7_V2.EPD()
 
-        # Initialize and clear the display
-        logging.info("init")
         epd.init()
-
         # Button setup
         setup_buttons()
 
-        while True:
-            # Load local JSON data
-            local_json_data = load_local_json(LOCAL_JSON_PATH)
-
-            # Fetch JSON data from remote
-            remote_json_data = get_json_data(REMOTE_JSON_URL)
-
-            if remote_json_data:
-                # Check if the remote data is different from the local data
-                if local_json_data != remote_json_data:
-                    logging.info("New data found. Updating display.")
-                    save_local_json(LOCAL_JSON_PATH, remote_json_data)
-                    render_title_page(epd, remote_json_data)
-                    time.sleep(10)
-                    render_politics_headline(epd, remote_json_data)
-                else:
-                    logging.info("No new data. Skipping update.")
-                    render_politics_headline(epd, local_json_data)
-            else:
-                logging.info("Failed to fetch remote data. Using local data if available.")
-                if local_json_data:
-                    pages.render_headline_page(epd, "Failed to fetch remote data. Using local data if available.")
-                    time.sleep(20)
-                    render_politics_headline(epd, local_json_data)
-
-                else:
-                    logging.info("No local data available. Cannot update display.")
-                    pages.render_headline_page(epd, "No local data available. Cannot update display.")
-
-            # Sleep for the specified interval before checking again
-            epd.sleep()
-            time.sleep(CHECK_INTERVAL)
+        check_for_updates()
 
     except IOError as e:
         logging.info(e)

@@ -4,7 +4,7 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/.idea" />
     </content>
-    <orderEntry type="jdk" jdkName="Remote Python 3.11.2 (sftp://erik@parodypost.local:22/home/erik/.virtualenvs/SatericalHeadlines/bin/python)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Remote Python 3.11.2 (sftp://erik@parodypost.local:22/home/erik/.virtualenvs/SatericalHeadlines/bin/python) (2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

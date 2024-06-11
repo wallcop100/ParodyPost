@@ -1,6 +1,13 @@
 # pages.py
 from text_renderer import TextRenderer
 
+
+def calculate_max_body_width(renderer, font_path, font_size, display_width, margin=0):
+    font = renderer.load_font(font_path, font_size)
+    sample_char = 'W'
+    char_width = renderer.draw.textsize(sample_char, font=font)[0]
+    max_body_width = (display_width + 100 - margin * 2) // char_width
+    return max_body_width
 def render_title_page(epd, header_text, body_text):
         # Text rendering parameters
         header_font_path = 'fonts/OldLondon.ttf'
@@ -34,14 +41,13 @@ def render_title_page(epd, header_text, body_text):
 
 def render_headline_page(epd, body_text):
     # Text rendering parameters
-    body_font_path = 'fonts/PixelifySans.ttf'
+    body_font_path = 'fonts/PerfectDOS.ttf'
     body_size = 25
-    max_body_width = 20
+    max_body_width = 18
 
     # Initialize TextRenderer
     renderer = TextRenderer(epd.height, epd.width)
     renderer.init_image()
-
     # Load font
     body_font = renderer.load_font(body_font_path, body_size)
 
@@ -57,14 +63,14 @@ def render_headline_page(epd, body_text):
 
 def render_body_page(epd, body_text):
     # Text rendering parameters
-    body_font_path = 'fonts/PixelifySans.ttf'
-    body_size = 18
-    max_body_width = 30
+    body_font_path = 'fonts/PerfectDOS.ttf'
+    body_size = 17
+
 
     # Initialize TextRenderer
     renderer = TextRenderer(epd.height, epd.width)
     renderer.init_image()
-
+    max_body_width = calculate_max_body_width(renderer, body_font_path, body_size, epd.width)
     # Load font
     body_font = renderer.load_font(body_font_path, body_size)
 
