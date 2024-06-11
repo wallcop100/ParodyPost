@@ -50,9 +50,9 @@ def render_title_page(epd, json_data):
     date = json_data.get('Date', 'Unknown Date')
     time_of_day = json_data.get('Time', 'Unknown Time')
     politics_headline = json_data.get('Politics', {}).get('Headline', 'Default Politics Headline')
-
+    newline = '\n'
     title_text = 'Parody Post'
-    date_text = f"{date} \n {time_of_day} Edition"
+    date_text = f"{date} {newline} {time_of_day} Edition"
 
     # Render and display the title page
     pages.render_title_page(epd, title_text, date_text)
@@ -101,6 +101,7 @@ def button_callback(btn):
     if local_json_data:
         # Map each button to a specific page rendering function
         if btn.pin.number == 5:
+            #render_title_page(epd, local_json_data)
             render_politics_headline(epd, local_json_data)
         elif btn.pin.number == 6:
             render_politics_page(epd, local_json_data)
@@ -142,7 +143,7 @@ def check_for_updates():
             logging.ERROR("Failed to fetch remote data. Using local data if available.")
             if local_json_data:
                 pages.render_headline_page(epd, "Failed to fetch remote data. Using local data if available.")
-                time.sleep(20)
+                time.sleep(30)
                 render_politics_headline(epd, local_json_data)
 
             else:

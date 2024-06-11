@@ -14,7 +14,7 @@ def render_title_page(epd, header_text, body_text):
         body_font_path = 'fonts/PixelifySans.ttf'
         header_size = 57
         body_size = 25
-        max_body_width = 25
+        max_body_width = 20
 
         # Initialize TextRenderer
         renderer = TextRenderer(epd.height, epd.width)
@@ -42,7 +42,7 @@ def render_title_page(epd, header_text, body_text):
 def render_headline_page(epd, body_text):
     # Text rendering parameters
     body_font_path = 'fonts/PerfectDOS.ttf'
-    body_size = 25
+    body_size = 22
     max_body_width = 18
 
     # Initialize TextRenderer
