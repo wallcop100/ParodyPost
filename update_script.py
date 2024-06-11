@@ -1,14 +1,28 @@
 import os
 import subprocess
 
-def update_script():
+
+def update_script(repo_dir):
     try:
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))  # Change to the directory where this script is located
-        subprocess.run(["git", "fetch", "--all"])  # Fetch changes from the remote repository
-        subprocess.run(["git", "reset", "--hard", "origin/main"])  # Reset local changes to match the remote repository
-        print("Repository updated successfully.")
+        # Navigate to the root directory of the cloned repository
+        os.chdir(repo_dir)
+
+        # Pull changes from the remote repository
+        subprocess.run(["git", "pull"])
+
+        # Navigate to the src directory
+        src_dir = os.path.join(repo_dir, "src")
+        os.chdir(src_dir)
+
+        # Pull changes from the remote repository for the src directory only
+        subprocess.run(["git", "pull"])
+
+        print("Script updated successfully.")
     except Exception as e:
-        print(f"Error updating repository: {e}")
+        print(f"Error updating script: {e}")
+
 
 if __name__ == "__main__":
-    update_script()
+    # Specify the directory where the repository is cloned
+    repo_dir = os.path.abspath(os.path.dirname(__file__))
+    update_script(repo_dir)

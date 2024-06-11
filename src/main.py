@@ -85,7 +85,7 @@ def render_general_page(epd, json_data):
 def render_combined_page(epd, json_data):
     general_article = json_data.get('General', {}).get('Article', 'Default General Article')
     # Render and display the combined page
-    pages.render_body_page(epd,general_article)
+    pages.render_body_page(epd, general_article)
 
 
 
@@ -169,7 +169,7 @@ def main():
     except KeyboardInterrupt:
         logging.info("ctrl + c:")
         epd.sleep()
-        epd2in7_V2.epdconfig.module_exit(cleanup=True)
+        src.waveshare_epd.epdconfig.module_exit(cleanup=True)
         exit()
 
 
