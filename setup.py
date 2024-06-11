@@ -24,9 +24,11 @@ WantedBy=multi-user.target
     return service_path
 
 def copy_update_script(repo_url, script_dir):
-    update_script_path = os.path.join(script_dir, "update_script.py")
-    shutil.copyfile(os.path.join(script_dir, "update_script.py"), update_script_path)
-    return update_script_path
+    update_script_src = os.path.join(script_dir, "update_script.py")
+    update_script_dst = os.path.join(os.getcwd(), "update_script.py")
+    shutil.copyfile(update_script_src, update_script_dst)
+    return update_script_dst
+
 
 def setup_script(script_path, repo_url):
     # Clone the repository
