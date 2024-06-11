@@ -1,16 +1,14 @@
-import subprocess
 import os
+import subprocess
 
-def update_repository():
+def update_script():
     try:
-        # Get the directory path where the script is located
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        os.chdir(script_directory)
-        # Pull the latest changes from the remote repository
-        subprocess.run(["git", "pull"])
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))  # Change to the directory where this script is located
+        subprocess.run(["git", "fetch", "--all"])  # Fetch changes from the remote repository
+        subprocess.run(["git", "reset", "--hard", "origin/main"])  # Reset local changes to match the remote repository
         print("Repository updated successfully.")
     except Exception as e:
         print(f"Error updating repository: {e}")
 
 if __name__ == "__main__":
-    update_repository()
+    update_script()

@@ -23,25 +23,9 @@ WantedBy=multi-user.target
         service_file.write(service_content)
     return service_path
 
-def create_update_script(repo_url, script_dir):
-    update_script_content = f"""
-import os
-import subprocess
-
-def update_script():
-    try:
-        os.chdir('{script_dir}')
-        subprocess.run(["git", "pull"])
-        print("Script updated successfully.")
-    except Exception as e:
-        print(f"Error updating script: {{e}}")
-
-if __name__ == "__main__":
-    update_script()
-"""
+def copy_update_script(repo_url, script_dir):
     update_script_path = os.path.join(script_dir, "update_script.py")
-    with open(update_script_path, "w") as update_script_file:
-        update_script_file.write(update_script_content)
+    shutil.copyfile(os.path.join(script_dir, "update_script.py"), update_script_path)
     return update_script_path
 
 def setup_script(script_path, repo_url):
@@ -56,8 +40,8 @@ def setup_script(script_path, repo_url):
     # Create systemd service
     service_path = create_service(os.path.join(script_dir, script_path), script_dir, current_user)
 
-    # Create update check script
-    update_script_path = create_update_script(repo_url, script_dir)
+    # Copy update check script
+    update_script_path = copy_update_script(repo_url, script_dir)
 
     # Enable and start the service
     subprocess.run(["sudo", "systemctl", "daemon-reload"])
