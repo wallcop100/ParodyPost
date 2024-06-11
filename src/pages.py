@@ -16,6 +16,9 @@ def render_title_page(epd, header_text, body_text):
         body_size = 25
         max_body_width = 20
 
+
+
+
         # Initialize TextRenderer
         renderer = TextRenderer(epd.height, epd.width)
         renderer.init_image()
@@ -42,8 +45,17 @@ def render_title_page(epd, header_text, body_text):
 def render_headline_page(epd, body_text):
     # Text rendering parameters
     body_font_path = 'fonts/PerfectDOS.ttf'
-    body_size = 22
-    max_body_width = 18
+
+
+    # Count words
+    word_list = body_text.split()
+    word_count = len(word_list)
+    if word_count < 20:
+        body_size = 22
+        max_body_width = 18
+    else:
+        body_size = 18
+        max_body_width = 20
 
     # Initialize TextRenderer
     renderer = TextRenderer(epd.height, epd.width)
