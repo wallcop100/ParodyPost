@@ -8,14 +8,15 @@ import subprocess
 from gpiozero import Button
 from PIL import Image
 
-# Set up logging
+# Set up logging & Define Paths
 logging.basicConfig(level=logging.DEBUG)
+REPO_ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 LOCAL_JSON_PATH = 'local_satirical_content.json'
 REMOTE_JSON_URL = 'https://wallcop100.github.io/SatericalHeadlineBackend/output/manifest.json'
-CHECK_INTERVAL = 900  # 15 minutes in seconds
-LOCAL_VERSION_FILE = 'version.txt'
+CHECK_INTERVAL = 900
+LOCAL_VERSION_FILE = os.path.join(REPO_ROOT_DIR, 'version.txt')
 GITHUB_REPO_API_URL = 'https://api.github.com/repos/wallcop100/ParodyPost/releases/latest'
-UPDATE_SCRIPT = 'update_script.py'
+UPDATE_SCRIPT = os.path.join(REPO_ROOT_DIR,'update_script.py')
 
 epd = epd2in7_V2.EPD()
 
@@ -113,7 +114,7 @@ def get_local_version():
 
 def get_remote_version():
     try:
-        response = requests.get(GITHUB_REPO_API_URL.format(owner='wallcop100', repo='SatericalHeadlineBackend'))
+        response = requests.get(GITHUB_REPO_API_URL.format(owner='wallcop100', repo='ParodyPost'))
         response.raise_for_status()
         release_info = response.json()
         return release_info['tag_name']
