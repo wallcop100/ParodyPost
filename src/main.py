@@ -4,6 +4,7 @@ import time
 import requests
 import json
 import os
+import subprocess
 from gpiozero import Button
 from PIL import Image
 
@@ -12,6 +13,10 @@ logging.basicConfig(level=logging.DEBUG)
 LOCAL_JSON_PATH = 'local_satirical_content.json'
 REMOTE_JSON_URL = 'https://wallcop100.github.io/SatericalHeadlineBackend/output/manifest.json'
 CHECK_INTERVAL = 900  # 15 minutes in seconds
+LOCAL_VERSION_FILE = 'version.txt'
+GITHUB_REPO_API_URL = 'https://api.github.com/repos/wallcop100/ParodyPost/releases/latest'
+UPDATE_SCRIPT = 'update_script.py'
+
 epd = epd2in7_V2.EPD()
 
 # GPIO pins for the buttons
@@ -96,6 +101,27 @@ def setup_buttons():
         btn.when_pressed = button_callback
 
 
+def get_local_version():
+    if os.path.exists(LOCAL_VERSION_FILE):
+        try:
+            with open(LOCAL_VERSION_FILE, 'r') as file:
+                return file.read().strip()
+        except IOError as e:
+            logging.error(f"Error reading local version file: {e}")
+    return None
+
+
+def get_remote_version():
+    try:
+        response = requests.get(GITHUB_REPO_API_URL.format(owner='wallcop100', repo='SatericalHeadlineBackend'))
+        response.raise_for_status()
+        release_info = response.json()
+        return release_info['tag_name']
+    except requests.RequestException as e:
+        logging.error(f"Error fetching remote version from GitHub: {e}")
+        return None
+
+
 def check_for_updates():
     logging.info("Starting Data Update Check")
     while True:
@@ -128,25 +154,47 @@ def check_for_updates():
             else:
                 logging.info("No new data. Skipping update.")
         else:
-            logging.ERROR("Failed to fetch remote data. Using local data if available.")
+            logging.error("Failed to fetch remote data. Using local data if available.")
             if local_json_data:
                 render_page(1)
             else:
-                logging.CRITICAL("No local data available. Cannot update display.")
+                logging.critical("No local data available. Cannot update display.")
 
         # Sleep for the specified interval before checking again
         epd.sleep()
         logging.info("Sleeping for 15 Minutes")
         time.sleep(CHECK_INTERVAL)
+
+
+def check_for_software_update():
+    logging.info("Checking for software updates...")
+    local_version = get_local_version()
+    remote_version = get_remote_version()
+
+    if local_version and remote_version:
+        if local_version != remote_version:
+            logging.info(f"New software version found: {remote_version}. Updating from version: {local_version}")
+            # Run the update script
+            subprocess.run(['python3', UPDATE_SCRIPT])
+        else:
+            logging.info("Software is up to date.")
+    else:
+        logging.error("Could not determine local or remote version.")
+
+
 def main():
     try:
         logging.info("Starting Up...")
         epd = epd2in7_V2.EPD()
-
         epd.init()
+
         # Button setup
         setup_buttons()
 
+        # Check for software updates before starting the update loop
+        check_for_software_update()
+
+        # Start the update loop
         check_for_updates()
 
     except IOError as e:
@@ -155,7 +203,7 @@ def main():
     except KeyboardInterrupt:
         logging.info("ctrl + c:")
         epd.sleep()
-        src.waveshare_epd.epdconfig.module_exit(cleanup=True)
+        epd2in7_V2.epdconfig.module_exit(cleanup=True)
         exit()
 
 
