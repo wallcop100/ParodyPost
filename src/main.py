@@ -12,6 +12,8 @@ from PIL import Image
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
+log_capture = io.StringIO()
+logging.basicConfig(stream=log_capture, level=logging.ERROR)
 
 # Define paths relative to the script location
 REPO_ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -21,7 +23,11 @@ UPDATE_SCRIPT = os.path.join(REPO_ROOT_DIR, 'update_script.py')
 REMOTE_JSON_URL = 'https://wallcop100.github.io/SatericalHeadlineBackend/output/manifest.json'
 GITHUB_REPO_API_URL = 'https://api.github.com/repos/wallcop100/ParodyPost/releases/latest'
 CHECK_INTERVAL = 900  # 15 minutes in seconds
+DEBUG_FONT = ImageFont.truetype(os.path.join(REPO_ROOT_DIR, 'Font.ttc'), 18)
 
+
+# Configure logging to write to log_capture
+logging.basicConfig(stream=log_capture, level=logging.DEBUG)
 epd = epd2in7_V2.EPD()
 
 # GPIO pins for the buttons
@@ -96,7 +102,7 @@ def button_callback(btn):
         logging.info("Debug Info")
         # Example action: render a specific page
         if 5 in pressed_buttons and 19 in pressed_buttons:
-            debug_mode  # Render page 1 when buttons 5 and 6 are pressed together
+            debug_info
 
         # Clear pressed_buttons list after action
         pressed_buttons = []
@@ -204,7 +210,13 @@ def check_for_software_update():
     else:
         logging.error("Could not determine local or remote version.")
 def debug_info():
+    epd.Clear()
     local_version = get_local_version()
+    image = Image.new('1', (epd.width, epd.height), 255)  # 255: clear the image with white
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 0), local_version, font=DEBUG_FONT, fill=0)
+    draw.text((10, 50), LOGS, font=DEBUG_FONT, fill=0)
+    epd.display(epd.getbuffer(image))
 
 def main():
     try:
