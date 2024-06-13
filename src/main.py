@@ -8,15 +8,19 @@ import subprocess
 from gpiozero import Button
 from PIL import Image
 
-# Set up logging & Define Paths
+
+
+# Set up logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Define paths relative to the script location
 REPO_ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-LOCAL_JSON_PATH = 'local_satirical_content.json'
-REMOTE_JSON_URL = 'https://wallcop100.github.io/SatericalHeadlineBackend/output/manifest.json'
-CHECK_INTERVAL = 900
+LOCAL_JSON_PATH = os.path.join(REPO_ROOT_DIR, 'local_satirical_content.json')
 LOCAL_VERSION_FILE = os.path.join(REPO_ROOT_DIR, 'version.txt')
+UPDATE_SCRIPT = os.path.join(REPO_ROOT_DIR, 'update_script.py')
+REMOTE_JSON_URL = 'https://wallcop100.github.io/SatericalHeadlineBackend/output/manifest.json'
 GITHUB_REPO_API_URL = 'https://api.github.com/repos/wallcop100/ParodyPost/releases/latest'
-UPDATE_SCRIPT = os.path.join(REPO_ROOT_DIR,'update_script.py')
+CHECK_INTERVAL = 900  # 15 minutes in seconds
 
 epd = epd2in7_V2.EPD()
 
@@ -52,16 +56,18 @@ def save_local_json(path, data):
         logging.error(f"Error saving local JSON file: {e}")
 
 
+
 def download_image(url, filename):
     try:
         response = requests.get(url, stream=True)
         response.raise_for_status()
 
         # Create content folder if it doesn't exist
-        if not os.path.exists("content"):
-            os.makedirs("content")
+        content_dir = os.path.join(REPO_ROOT_DIR, 'content')
+        if not os.path.exists(content_dir):
+            os.makedirs(content_dir)
 
-        filepath = os.path.join("content", filename)
+        filepath = os.path.join(content_dir, filename)
         with open(filepath, 'wb') as f:
             for chunk in response.iter_content(1024):
                 f.write(chunk)
@@ -71,7 +77,8 @@ def download_image(url, filename):
 
 
 def render_page(page):
-    Render = Image.open(f'content/page_{page}.bmp')
+    image_path = os.path.join(REPO_ROOT_DIR, f'content/page_{page}.bmp')
+    Render = Image.open(image_path)
     epd.display(epd.getbuffer(Render))
 
 
@@ -114,7 +121,7 @@ def get_local_version():
 
 def get_remote_version():
     try:
-        response = requests.get(GITHUB_REPO_API_URL.format(owner='wallcop100', repo='ParodyPost'))
+        response = requests.get(GITHUB_REPO_API_URL)
         response.raise_for_status()
         release_info = response.json()
         return release_info['tag_name']
@@ -139,8 +146,9 @@ def check_for_updates():
                 save_local_json(LOCAL_JSON_PATH, remote_json_data)
 
                 # Clear content folder before downloading new images
-                for filename in os.listdir("content"):
-                    filepath = os.path.join("content", filename)
+                content_dir = os.path.join(REPO_ROOT_DIR, 'content')
+                for filename in os.listdir(content_dir):
+                    filepath = os.path.join(content_dir, filename)
                     os.remove(filepath)
                     logging.info(f"Deleted old image: {filename}")
 
@@ -175,8 +183,8 @@ def check_for_software_update():
     if local_version and remote_version:
         if local_version != remote_version:
             logging.info(f"New software version found: {remote_version}. Updating from version: {local_version}")
-            # Run the update script
-            subprocess.run(['python3', UPDATE_SCRIPT])
+            # Run the update script as a separate process
+            subprocess.Popen(['python3', UPDATE_SCRIPT], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             logging.info("Software is up to date.")
     else:
@@ -199,7 +207,7 @@ def main():
         check_for_updates()
 
     except IOError as e:
-        logging.info(e)
+        logging.error(e)
 
     except KeyboardInterrupt:
         logging.info("ctrl + c:")

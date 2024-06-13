@@ -1,2 +1,9 @@
+<<<<<<< Updated upstream
 */.ideas
 /.idea
+=======
+*/.idea
+/.idea
+/.idea
+.idea/workspace.xml
+>>>>>>> Stashed changes
