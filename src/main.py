@@ -178,6 +178,9 @@ def check_for_updates():
                     logging.error("Unable to determine local JSON file, Downloading Latest Version")
                     save_local_json(LOCAL_JSON_PATH, remote_json_data)
                     update_content(remote_json_data)
+                    render_page("title")
+                    time.sleep(10)
+                    render_page(1)
                 elif local_json_data != remote_json_data:
                     logging.info("New data found. Updating display.")
                     save_local_json(LOCAL_JSON_PATH, remote_json_data)
