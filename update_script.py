@@ -4,11 +4,13 @@ import requests
 import zipfile
 import shutil
 import logging
+import fcntl
 
 # Constants for GitHub repository
 GITHUB_REPO = "wallcop100/ParodyPost"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 LOCAL_VERSION_FILE = os.path.join(os.path.dirname(__file__), "version.txt")
+LOCK_FILE = os.path.join(os.path.dirname(__file__), "update_script.lock")
 
 # Set up logging
 logging.basicConfig(filename=os.path.join(os.path.dirname(__file__), 'update_script.log'),
@@ -59,12 +61,12 @@ def extract_zip(zip_path, extract_to):
 def update_files(src_dir, dest_dir):
     try:
         # List of files/directories to exclude from deletion
-        exclude_files = ['update_script.log', 'latest_release', 'latest_release.zip']  # Add more files/directories as needed
+        exclude_files = ['update_script.log', 'latest_release', 'latest_release.zip', 'version.txt']  # Add more files/directories as needed
 
         # Remove old files, excluding those in exclude_files
         for item in os.listdir(dest_dir):
             item_path = os.path.join(dest_dir, item)
-            if os.path.abspath(item_path) in [os.path.abspath(os.path.join(dest_dir, f)) for f in exclude_files]:
+            if item in exclude_files:
                 continue  # Skip this file/directory
             if os.path.isdir(item_path):
                 shutil.rmtree(item_path)
@@ -73,8 +75,12 @@ def update_files(src_dir, dest_dir):
 
         # Copy new files
         for item in os.listdir(src_dir):
-            item_path = os.path.join(src_dir, item)
-            shutil.move(item_path, dest_dir)
+            src_item_path = os.path.join(src_dir, item)
+            dest_item_path = os.path.join(dest_dir, item)
+            if os.path.isdir(src_item_path):
+                shutil.copytree(src_item_path, dest_item_path, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src_item_path, dest_item_path)
 
         logging.info("Files updated successfully.")
     except Exception as e:
@@ -100,8 +106,15 @@ def get_local_version():
         return None
 
 def update_script(repo_dir):
+    lock_file = None
     try:
-        subprocess.run(["sudo", "systemctl", "stop", "parodypost.service"])
+        # Acquire lock
+        lock_file = open(LOCK_FILE, 'w')
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+        # Stop the service
+        subprocess.run(["sudo", "systemctl", "stop", "parodypost_main.service"])
+
         # Get latest release info
         release_info = get_latest_release_info()
         if not release_info:
@@ -113,6 +126,7 @@ def update_script(repo_dir):
 
         if current_version == latest_version:
             logging.info(f"Current version ({current_version}) is up to date. No need to update.")
+            subprocess.run(["sudo", "systemctl", "start", "parodypost_main.service"])
             return
 
         # Stop the service
@@ -120,7 +134,6 @@ def update_script(repo_dir):
 
         # Download the latest release
         download_url = release_info['zipball_url']
-        version = release_info['tag_name']
         download_path = os.path.join(repo_dir, "latest_release.zip")
         download_latest_release(download_url, download_path)
 
@@ -133,18 +146,27 @@ def update_script(repo_dir):
         update_files(extract_path, repo_dir)
 
         # Start the service
-        subprocess.run(["sudo", "systemctl", "restart", "parodypost.service"])
+        subprocess.run(["sudo", "systemctl", "restart", "parodypost_main.service"])
 
         # Clean up
         os.remove(download_path)
         shutil.rmtree(extract_path)
 
         # Update version file
-        update_version_file(version)
+        update_version_file(latest_version)
         logging.info("Script updated successfully.")
+    except OSError as e:
+        if e.errno == 11:  # EAGAIN, indicating the lock is already held
+            logging.error("Another instance of the update script is already running.")
+        else:
+            logging.error(f"Error acquiring lock: {e}")
     except Exception as e:
         logging.error(f"Error updating script: {e}")
-        subprocess.run(["sudo", "systemctl", "restart", "parodypost.service"])
+        subprocess.run(["sudo", "systemctl", "restart", "parodypost_main.service"])
+    finally:
+        if lock_file:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
 
 if __name__ == "__main__":
     # Specify the directory where the repository is located
