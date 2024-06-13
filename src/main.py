@@ -53,7 +53,7 @@ def load_local_json(path):
                 return json.load(file)
         except json.JSONDecodeError as e:
             logging.error(f"Error decoding local JSON file: {e}")
-    return None
+    return False
 
 
 def save_local_json(path, data):
@@ -168,10 +168,44 @@ def get_remote_version():
     except requests.RequestException as e:
         logging.error(f"Error fetching remote version from GitHub: {e}")
         return None
+def update_content(remote_json_data):
+    content_dir = os.path.join(REPO_ROOT_DIR, 'src/content')
+
+    # Ensure the content directory exists
+    if not os.path.exists(content_dir):
+        os.makedirs(content_dir)
+        logging.info(f"Created content directory: {content_dir}")
+
+    # Clear content folder before downloading new images
+    for filename in os.listdir(content_dir):
+        filepath = os.path.join(content_dir, filename)
+        os.remove(filepath)
+        logging.info(f"Deleted old image: {filename}")
+
+    # Download images from Page Files section
+    page_files = remote_json_data["Page Files"]
+    for name, image_url in page_files.items():
+        download_image(image_url, name)
 
 
 def check_for_updates():
     logging.info("Starting Data Update Check")
+
+    # Check if the content directory is empty
+    content_dir = os.path.join(REPO_ROOT_DIR, 'src/content')
+    if not os.path.exists(content_dir) or not os.listdir(content_dir):
+        logging.info("Content directory is empty. Downloading initial content.")
+        remote_json_data = get_json_data(REMOTE_JSON_URL)
+        if remote_json_data:
+            save_local_json(LOCAL_JSON_PATH, remote_json_data)
+            update_content(remote_json_data)
+            render_page("title")
+            time.sleep(10)
+            render_page(1)
+        else:
+            logging.error("Failed to fetch remote data for initial content download.")
+        return
+
     while True:
         # Load local JSON data
         local_json_data = load_local_json(LOCAL_JSON_PATH)
@@ -181,22 +215,14 @@ def check_for_updates():
 
         if remote_json_data:
             # Check if the remote data is different from the local data
-            if local_json_data != remote_json_data:
+            if local_json_data == False:
+                logging.ERROR("Unable to determine local JSON file, Downloading Latest Version")
+                save_local_json(LOCAL_JSON_PATH, remote_json_data)
+                update_content(remote_json_data)
+            elif local_json_data != remote_json_data:
                 logging.info("New data found. Updating display.")
                 save_local_json(LOCAL_JSON_PATH, remote_json_data)
-
-                # Clear content folder before downloading new images
-                content_dir = os.path.join(REPO_ROOT_DIR, 'src/content')
-                for filename in os.listdir(content_dir):
-                    filepath = os.path.join(content_dir, filename)
-                    os.remove(filepath)
-                    logging.info(f"Deleted old image: {filename}")
-
-                # Download images from Page Files section
-                page_files = remote_json_data["Page Files"]
-                for name, image_url in page_files.items():
-                    download_image(image_url, name)
-
+                update_content(remote_json_data)
                 render_page("title")
                 time.sleep(10)
                 render_page(1)
@@ -214,9 +240,7 @@ def check_for_updates():
         logging.info("Sleeping for 15 Minutes")
         time.sleep(CHECK_INTERVAL)
 
-
 def check_for_software_update():
-    while True:
         logging.info("Checking for software updates...")
         local_version = get_local_version()
         remote_version = get_remote_version()

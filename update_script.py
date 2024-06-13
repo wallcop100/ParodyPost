@@ -35,7 +35,6 @@ def download_latest_release(download_url, download_path):
     except requests.RequestException as e:
         logging.error(f"Error downloading latest release: {e}")
 
-
 def extract_zip(zip_path, extract_to):
     try:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -56,10 +55,11 @@ def extract_zip(zip_path, extract_to):
         logging.error(f"Error extracting zip file: {e}")
     except Exception as e:
         logging.error(f"Error extracting zip file: {e}")
+
 def update_files(src_dir, dest_dir):
     try:
         # List of files/directories to exclude from deletion
-        exclude_files = ['update_script.log', './latest_release', './latest_release.zip']  # Add more files/directories as needed
+        exclude_files = ['update_script.log', 'latest_release', 'latest_release.zip']  # Add more files/directories as needed
 
         # Remove old files, excluding those in exclude_files
         for item in os.listdir(dest_dir):
@@ -79,6 +79,7 @@ def update_files(src_dir, dest_dir):
         logging.info("Files updated successfully.")
     except Exception as e:
         logging.error(f"Error updating files: {e}")
+
 def update_version_file(version):
     try:
         with open(LOCAL_VERSION_FILE, 'w') as file:
@@ -87,15 +88,34 @@ def update_version_file(version):
     except IOError as e:
         logging.error(f"Error updating version.txt: {e}")
 
+def get_local_version():
+    try:
+        if os.path.exists(LOCAL_VERSION_FILE):
+            with open(LOCAL_VERSION_FILE, 'r') as file:
+                return file.read().strip()
+        else:
+            return None
+    except IOError as e:
+        logging.error(f"Error reading version.txt: {e}")
+        return None
+
 def update_script(repo_dir):
     try:
+        subprocess.run(["sudo", "systemctl", "stop", "parodypost.service"])
         # Get latest release info
         release_info = get_latest_release_info()
         if not release_info:
             return
 
+        # Check current version
+        current_version = get_local_version()
+        latest_version = release_info['tag_name']
+
+        if current_version == latest_version:
+            logging.info(f"Current version ({current_version}) is up to date. No need to update.")
+            return
+
         # Stop the service
-        subprocess.run(["sudo", "systemctl", "stop", "parodypost.service"])
         subprocess.run(["sudo", "pkill", "-9", "-f", "main.py"])
 
         # Download the latest release
@@ -113,16 +133,18 @@ def update_script(repo_dir):
         update_files(extract_path, repo_dir)
 
         # Start the service
-        subprocess.run(["sudo", "systemctl", "start", "parodypost.service"])
+        subprocess.run(["sudo", "systemctl", "restart", "parodypost.service"])
+
         # Clean up
         os.remove(download_path)
         shutil.rmtree(extract_path)
+
         # Update version file
         update_version_file(version)
         logging.info("Script updated successfully.")
     except Exception as e:
         logging.error(f"Error updating script: {e}")
-
+        subprocess.run(["sudo", "systemctl", "restart", "parodypost.service"])
 
 if __name__ == "__main__":
     # Specify the directory where the repository is located
