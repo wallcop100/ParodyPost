@@ -27,7 +27,7 @@ WantedBy=multi-user.target
     return service_path
 
 def create_cron_job(script_path, user):
-    cron_job = f"* * * * * {user} /usr/bin/python3 {script_path}\n"
+    cron_job = f"0 */6 * * * {user} /usr/bin/python3 {script_path}\n"
     cron_path = "/etc/cron.d/parodypost_update_cron"
     try:
         with open(cron_path, "w") as cron_file:
