@@ -63,7 +63,7 @@ def download_image(url, filename):
         response.raise_for_status()
 
         # Create content folder if it doesn't exist
-        content_dir = os.path.join(REPO_ROOT_DIR, 'content')
+        content_dir = os.path.join(REPO_ROOT_DIR, 'src/content')
         if not os.path.exists(content_dir):
             os.makedirs(content_dir)
 
@@ -83,25 +83,39 @@ def render_page(page):
 
 
 def button_callback(btn):
+    global pressed_buttons
     logging.info(f"Button on GPIO {btn.pin.number} pressed.")
-    epd = epd2in7_V2.EPD()
-    epd.init()
-    epd.Clear()
 
-    # Load local JSON data
-    local_json_data = load_local_json(LOCAL_JSON_PATH)
+    # Add the pressed button to the list
+    if btn.pin.number not in pressed_buttons:
+        pressed_buttons.append(btn.pin.number)
 
-    if local_json_data:
-        # Map each button to a specific page rendering function
-        if btn.pin.number == 5:
-            render_page(1)
-        elif btn.pin.number == 6:
-            render_page(2)
-        elif btn.pin.number == 13:
-            render_page(3)
-        elif btn.pin.number == 19:
-            render_page(4)
+    # Check if two buttons are pressed together
+    if len(pressed_buttons) == 2:
+        # Perform your action here when two buttons are pressed
+        logging.info("Debug Info")
+        # Example action: render a specific page
+        if 5 in pressed_buttons and 19 in pressed_buttons:
+            debug_mode  # Render page 1 when buttons 5 and 6 are pressed together
 
+        # Clear pressed_buttons list after action
+        pressed_buttons = []
+
+    # Perform individual button actions if needed
+    else:
+        # Load local JSON data
+        local_json_data = load_local_json(LOCAL_JSON_PATH)
+
+        if local_json_data:
+            # Map each button to a specific page rendering function
+            if btn.pin.number == 5:
+                render_page(1)
+            elif btn.pin.number == 6:
+                render_page(2)
+            elif btn.pin.number == 13:
+                render_page(3)
+            elif btn.pin.number == 19:
+                render_page(4)
 
 def setup_buttons():
     for pin in BUTTON_PINS:
@@ -189,7 +203,8 @@ def check_for_software_update():
             logging.info("Software is up to date.")
     else:
         logging.error("Could not determine local or remote version.")
-
+def debug_info():
+    local_version = get_local_version()
 
 def main():
     try:
