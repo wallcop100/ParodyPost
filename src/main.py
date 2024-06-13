@@ -6,7 +6,8 @@ import json
 import os
 import subprocess
 from gpiozero import Button
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import io
 
 
 
@@ -17,13 +18,13 @@ logging.basicConfig(stream=log_capture, level=logging.ERROR)
 
 # Define paths relative to the script location
 REPO_ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-LOCAL_JSON_PATH = os.path.join(REPO_ROOT_DIR, 'local_satirical_content.json')
+LOCAL_JSON_PATH = os.path.join(REPO_ROOT_DIR, 'src/manifest.json')
 LOCAL_VERSION_FILE = os.path.join(REPO_ROOT_DIR, 'version.txt')
 UPDATE_SCRIPT = os.path.join(REPO_ROOT_DIR, 'update_script.py')
 REMOTE_JSON_URL = 'https://wallcop100.github.io/SatericalHeadlineBackend/output/manifest.json'
 GITHUB_REPO_API_URL = 'https://api.github.com/repos/wallcop100/ParodyPost/releases/latest'
 CHECK_INTERVAL = 900  # 15 minutes in seconds
-DEBUG_FONT = ImageFont.truetype(os.path.join(REPO_ROOT_DIR, 'Font.ttc'), 18)
+DEBUG_FONT = ImageFont.truetype(os.path.join(REPO_ROOT_DIR, 'src/Font.ttf'), 5)
 
 
 # Configure logging to write to log_capture
@@ -31,9 +32,10 @@ logging.basicConfig(stream=log_capture, level=logging.DEBUG)
 epd = epd2in7_V2.EPD()
 
 # GPIO pins for the buttons
+pressed_buttons = []
 BUTTON_PINS = [5, 6, 13, 19]
-
-
+last_press_time = 0
+current_time = time.time()
 def get_json_data(url):
     try:
         response = requests.get(url)
@@ -83,46 +85,64 @@ def download_image(url, filename):
 
 
 def render_page(page):
-    image_path = os.path.join(REPO_ROOT_DIR, f'content/page_{page}.bmp')
-    Render = Image.open(image_path)
-    epd.display(epd.getbuffer(Render))
+    image_path = os.path.join(REPO_ROOT_DIR, f'src/content/page_{page}.bmp')
+
+    try:
+        image = Image.open(image_path)
+    except IOError as e:
+        logging.error(f"Error opening image {image_path}: {e}")
+        return
+
+    try:
+        epd.init()
+        epd.display(epd.getbuffer(image))
+    except IOError as e:
+        logging.error(f"Error displaying image on EPD: {e}")
+    finally:
+        epd.sleep()
 
 
+# Function to handle button presses
 def button_callback(btn):
-    global pressed_buttons
+    global pressed_buttons, last_press_time, epd, current_time
+
     logging.info(f"Button on GPIO {btn.pin.number} pressed.")
 
-    # Add the pressed button to the list
-    if btn.pin.number not in pressed_buttons:
-        pressed_buttons.append(btn.pin.number)
+    last_press_time = current_time
+    # Check if it's been less than 2 seconds since last press
+    if current_time - last_press_time <= 2:
+        # Add the pressed button to the list
+        if btn.pin.number not in pressed_buttons:
+            pressed_buttons.append(btn.pin.number)
 
-    # Check if two buttons are pressed together
-    if len(pressed_buttons) == 2:
-        # Perform your action here when two buttons are pressed
-        logging.info("Debug Info")
-        # Example action: render a specific page
-        if 5 in pressed_buttons and 19 in pressed_buttons:
-            debug_info
+        # Check if two buttons are pressed together
+        if len(pressed_buttons) == 2:
+            # Perform action for two buttons pressed together
+            if 5 in pressed_buttons and 19 in pressed_buttons:
+                logging.info("Buttons 5 and 19 pressed together within 2 seconds. Performing action...")
+                debug_info()
+                return  # Exit the function to avoid single press action
 
-        # Clear pressed_buttons list after action
-        pressed_buttons = []
+            # Clear pressed_buttons list after action
+            pressed_buttons = []
+    else:
+        # It's a single press scenario
+        pressed_buttons = [btn.pin.number]
 
     # Perform individual button actions if needed
-    else:
-        # Load local JSON data
-        local_json_data = load_local_json(LOCAL_JSON_PATH)
+    local_json_data = load_local_json(LOCAL_JSON_PATH)
+    if local_json_data:
+        if btn.pin.number == 5:
+            render_page(1)
+        elif btn.pin.number == 6:
+            render_page(2)
+        elif btn.pin.number == 13:
+            render_page(3)
+        elif btn.pin.number == 19:
+            render_page(4)
 
-        if local_json_data:
-            # Map each button to a specific page rendering function
-            if btn.pin.number == 5:
-                render_page(1)
-            elif btn.pin.number == 6:
-                render_page(2)
-            elif btn.pin.number == 13:
-                render_page(3)
-            elif btn.pin.number == 19:
-                render_page(4)
-
+    # Update last press time regardless of single or double press
+    last_press_time = current_time
 def setup_buttons():
     for pin in BUTTON_PINS:
         btn = Button(pin)
@@ -166,7 +186,7 @@ def check_for_updates():
                 save_local_json(LOCAL_JSON_PATH, remote_json_data)
 
                 # Clear content folder before downloading new images
-                content_dir = os.path.join(REPO_ROOT_DIR, 'content')
+                content_dir = os.path.join(REPO_ROOT_DIR, 'src/content')
                 for filename in os.listdir(content_dir):
                     filepath = os.path.join(content_dir, filename)
                     os.remove(filepath)
@@ -181,7 +201,7 @@ def check_for_updates():
                 time.sleep(10)
                 render_page(1)
             else:
-                logging.info("No new data. Skipping update.")
+                logging.info("No new content. Skipping update.")
         else:
             logging.error("Failed to fetch remote data. Using local data if available.")
             if local_json_data:
@@ -196,27 +216,37 @@ def check_for_updates():
 
 
 def check_for_software_update():
-    logging.info("Checking for software updates...")
-    local_version = get_local_version()
-    remote_version = get_remote_version()
+    while True:
+        logging.info("Checking for software updates...")
+        local_version = get_local_version()
+        remote_version = get_remote_version()
 
-    if local_version and remote_version:
-        if local_version != remote_version:
-            logging.info(f"New software version found: {remote_version}. Updating from version: {local_version}")
-            # Run the update script as a separate process
-            subprocess.Popen(['python3', UPDATE_SCRIPT], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if local_version and remote_version:
+            if local_version != remote_version:
+                logging.info(f"New software version found: {remote_version}. Updating from version: {local_version}")
+                # Run the update script as a separate process
+                subprocess.Popen(['python3', UPDATE_SCRIPT], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            else:
+                logging.info("Software is up to date.")
         else:
-            logging.info("Software is up to date.")
-    else:
-        logging.error("Could not determine local or remote version.")
+            logging.error("Could not determine local or remote version.")
 def debug_info():
-    epd.Clear()
+    global epd
     local_version = get_local_version()
-    image = Image.new('1', (epd.width, epd.height), 255)  # 255: clear the image with white
+    log_content = log_capture.getvalue()
+    image = Image.new('1', (epd.height, epd.width), 255)
     draw = ImageDraw.Draw(image)
-    draw.text((10, 0), local_version, font=DEBUG_FONT, fill=0)
-    draw.text((10, 50), LOGS, font=DEBUG_FONT, fill=0)
-    epd.display(epd.getbuffer(image))
+    draw.text((50, 30), "DEBUG MODE", font=DEBUG_FONT, fill='black')
+    draw.text((50, 30), local_version, font=DEBUG_FONT, fill='black')
+    #draw.text((10, 50), log_content, font=DEBUG_FONT, fill='black')
+    time.sleep(2)
+    try:
+        epd.init()
+        epd.display_Base(epd.getbuffer(image))
+    except IOError as e:
+        logging.error(f"Error displaying image on EPD: {e}")
+    finally:
+        epd.sleep()
 
 def main():
     try:
